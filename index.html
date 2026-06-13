@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Sistema Exclusivo</title>
+    <style>
+        :root {
+            --bg-dark: #121824;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        h1 { margin: 0; font-size: 24px; }
+        .os-badge {
+            background: #334155;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .card h3 { margin-top: 0; color: #94a3b8; font-size: 16px; }
+        .metric {
+            font-size: 38px;
+            font-weight: bold;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .bar-container {
+            background-color: #334155;
+            border-radius: 6px;
+            height: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .bar {
+            width: 0%;
+            height: 100%;
+            background-color: var(--accent-green);
+            transition: width 0.5s ease-in-out, background-color 0.3s;
+        }
+        .alert-active {
+            background-color: var(--accent-red) !important;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th { background-color: #334155; color: #cbd5e1; font-weight: 600; }
+        tr:not(:last-child) { border-bottom: 1px solid #334155; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>Dashboard de Recursos en Vivo</h1>
+            <small style="color: #64748b;">Actualización automatizada cada 3s</small>
+        </div>
+        <div class="os-badge">Sistema: <span id="os-text">Cargando...</span></div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h3>USO DE CPU</h3>
+            <div class="metric"><span id="cpu-val">0</span>%</div>
+            <div class="bar-container">
+                <div id="cpu-bar" class="bar"></div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>MEMORIA RAM</h3>
+            <div class="metric"><span id="ram-val">0</span>%</div>
+            <div class="bar-container">
+                <div id="ram-bar" class="bar"></div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>ALMACENAMIENTO DISCO</h3>
+            <div class="metric"><span id="disco-val">0</span>%</div>
+            <div class="bar-container">
+                <div id="disco-bar" class="bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <h2>Procesos con mayor consumo (CPU)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>PID</th>
+                <th>Nombre del Proceso</th>
+                <th>Carga de CPU</th>
+            </tr>
+        </thead>
+        <tbody id="procesos-tabla">
+            <tr>
+                <td colspan="3" style="text-align: center; color: #64748b;">Buscando procesos activos...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Umbrales configurados exactamente igual que en tu backend
+    const UMBRAL_CPU = 80;
+    const UMBRAL_RAM = 85;
+
+    function actualizarDashboard() {
+        fetch('/datos')
+            .then(response => response.json())
+            .then(data => {
+                // Actualizar Textos
+                document.getElementById('os-text').innerText = data.os;
+                document.getElementById('cpu-val').innerText = data.cpu;
+                document.getElementById('ram-val').innerText = data.memoria;
+                document.getElementById('disco-val').innerText = data.disco;
+
+                // Actualizar y colorear Barra de CPU (Corregido el typo aquí)
+                const cpuBar = document.getElementById('cpu-bar');
+                cpuBar.style.width = data.cpu + '%';
+                if (data.cpu > UMBRAL_CPU) { 
+                    cpuBar.classList.add('alert-active'); 
+                } else { 
+                    cpuBar.classList.remove('alert-active'); 
+                }
+
+                // Actualizar y colorear Barra de RAM
+                const ramBar = document.getElementById('ram-bar');
+                ramBar.style.width = data.memoria + '%';
+                if (data.memoria > UMBRAL_RAM) { 
+                    ramBar.classList.add('alert-active'); 
+                } else { 
+                    ramBar.classList.remove('alert-active'); 
+                }
+
+                // Actualizar Barra de Disco
+                document.getElementById('disco-bar').style.width = data.disco + '%';
+
+                // Renderizar tabla de procesos de forma limpia
+                const tabla = document.getElementById('procesos-tabla');
+                tabla.innerHTML = '';
+                
+                if (data.procesos && data.procesos.length > 0) {
+                    data.procesos.forEach(p => {
+                        const row = `<tr>
+                            <td><strong>${p.pid}</strong></td>
+                            <td>${p.name}</td>
+                            <td style="color: #38bdf8;">${p.cpu_percent.toFixed(1)}%</td>
+                        </tr>`;
+                        tabla.innerHTML += row;
+                    });
+                } else {
+                    tabla.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b;">No se detectaron procesos activos</td></tr>`;
+                }
+            })
+            .catch(error => console.error('Error capturando métricas de la API:', error));
+    }
+
+    // Ejecución inicial y bucle repetitivo cada 3 segundos
+    actualizarDashboard();
+    setInterval(actualizarDashboard, 3000);
+</script>
+</body>
+</html>
