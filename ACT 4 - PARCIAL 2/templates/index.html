@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor de Seguridad — SSH Log Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.7rem;
+      color: #e6edf3;
+      letter-spacing: 0.5px;
+    }
+
+    header p {
+      font-size: 0.82rem;
+      color: #6e7681;
+      margin-top: 0.3rem;
+    }
+
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 1.8rem;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .campo { margin-top: 1.1rem; }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.35rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 0.92rem;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #388bfd;
+    }
+
+    .btn-analizar {
+      display: block;
+      width: 100%;
+      margin-top: 1.6rem;
+      padding: 0.7rem;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.97rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-analizar:hover  { background: #2ea043; }
+    .btn-analizar:active { background: #1a7f37; }
+
+    /* Área de resultados */
+    #resultado {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 1.5rem;
+    }
+
+    .alerta-error {
+      background: #1f1117;
+      border: 1px solid #f8514980;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      color: #f85149;
+      font-size: 0.9rem;
+    }
+
+    .reporte-json {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.2rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #c9d1d9;
+    }
+
+    .cargando {
+      text-align: center;
+      color: #8b949e;
+      font-size: 0.9rem;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🔐 Monitor de Seguridad SSH</h1>
+    <p>Análisis de logs en servidores remotos</p>
+  </header>
+
+  <div class="panel">
+    <div class="campo">
+      <label for="host">Host / IP del servidor</label>
+      <input id="host" type="text" placeholder="192.168.1.10" value="{{ host }}">
+    </div>
+
+    <div class="campo">
+      <label for="usuario">Usuario SSH</label>
+      <input id="usuario" type="text" placeholder="admin" value="{{ usuario }}">
+    </div>
+
+    <div class="campo">
+      <label for="password">Contraseña</label>
+      <input id="password" type="password" placeholder="••••••••">
+    </div>
+
+    <div class="campo">
+      <label for="ruta_remota">Ruta del archivo de log</label>
+      <input id="ruta_remota" type="text" placeholder="/var/log/auth.log" value="{{ ruta_remota }}">
+    </div>
+
+    <button class="btn-analizar" onclick="ejecutarAnalisis()">
+      Conectar y analizar
+    </button>
+  </div>
+
+  <div id="resultado"></div>
+
+  <script>
+    async function ejecutarAnalisis() {
+      const host        = document.getElementById("host").value.trim();
+      const usuario     = document.getElementById("usuario").value.trim();
+      const password    = document.getElementById("password").value;
+      const ruta_remota = document.getElementById("ruta_remota").value.trim();
+      const resultado   = document.getElementById("resultado");
+
+      if (!host || !usuario || !password || !ruta_remota) {
+        resultado.innerHTML = `<div class="alerta-error">⚠️ Completa todos los campos antes de continuar.</div>`;
+        return;
+      }
+
+      resultado.innerHTML = `<p class="cargando">⏳ Conectando al servidor...</p>`;
+
+      try {
+        const respuesta = await fetch("/analizar", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ host, usuario, password, ruta_remota }),
+        });
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+          resultado.innerHTML = `<div class="alerta-error">⚠️ ${datos.error}</div>`;
+          return;
+        }
+
+        resultado.innerHTML = `<pre class="reporte-json">${JSON.stringify(datos, null, 2)}</pre>`;
+
+      } catch (err) {
+        resultado.innerHTML = `<div class="alerta-error">⚠️ Error de red: ${err.message}</div>`;
+      }
+    }
+  </script>
+
+</body>
+</html>
